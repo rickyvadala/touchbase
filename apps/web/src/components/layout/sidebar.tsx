@@ -3,14 +3,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import { LayoutDashboard, Users, Settings, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { cn } from '@/lib/cn';
-
-const navLinks = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/contacts', label: 'Contacts', icon: Users },
-  { href: '/settings', label: 'Settings', icon: Settings },
-];
+import { Avatar } from '@/components/ui/avatar';
+import { navLinks } from './nav-links';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -37,9 +33,7 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navLinks.map(({ href, label, icon: Icon }) => {
-          const isActive =
-            pathname === href || pathname.startsWith(`${href}/`);
-
+          const isActive = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
               key={href}
@@ -68,19 +62,12 @@ export function Sidebar() {
       {/* User section */}
       <div className="border-t border-warm-200 dark:border-warm-800 p-4">
         <div className="flex items-center gap-3">
-          {session?.user?.image ? (
-            <img
-              src={session.user.image}
-              alt={session.user.name ?? 'User avatar'}
-              className="h-9 w-9 rounded-full object-cover ring-2 ring-warm-200 dark:ring-warm-700"
-            />
-          ) : (
-            <div className="h-9 w-9 rounded-full bg-coral-100 dark:bg-coral-500/20 flex items-center justify-center">
-              <span className="text-sm font-medium text-coral-600 dark:text-coral-400">
-                {session?.user?.name?.charAt(0)?.toUpperCase() ?? '?'}
-              </span>
-            </div>
-          )}
+          <Avatar
+            src={session?.user?.image}
+            fallback={session?.user?.name ?? 'U'}
+            size="sm"
+            className="ring-2 ring-warm-200 dark:ring-warm-700"
+          />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-warm-900 dark:text-warm-100 truncate">
               {session?.user?.name ?? 'User'}
@@ -91,12 +78,7 @@ export function Sidebar() {
           </div>
           <button
             onClick={() => signOut({ callbackUrl: '/' })}
-            className={cn(
-              'p-1.5 rounded-lg transition-colors',
-              'text-warm-400 dark:text-warm-500',
-              'hover:bg-warm-100 dark:hover:bg-warm-800',
-              'hover:text-warm-600 dark:hover:text-warm-300'
-            )}
+            className="p-1.5 rounded-lg transition-colors text-warm-400 dark:text-warm-500 hover:bg-warm-100 dark:hover:bg-warm-800 hover:text-warm-600 dark:hover:text-warm-300"
             title="Sign out"
           >
             <LogOut className="h-4 w-4" />

@@ -6,6 +6,8 @@ import { useDashboard } from '@/hooks/use-dashboard';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Avatar } from '@/components/ui/avatar';
+import { formatBirthday } from '@/lib/constants';
 import {
   Users,
   Heart,
@@ -22,15 +24,6 @@ function getGreeting(): string {
   if (hour < 12) return 'Good morning!';
   if (hour < 17) return 'Good afternoon!';
   return 'Good evening!';
-}
-
-function formatBirthdayDate(dateStr: string): string {
-  const [month, day] = dateStr.split('-').map(Number);
-  const monthNames = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-  return `${monthNames[month - 1]} ${day}`;
 }
 
 function DashboardSkeleton() {
@@ -162,19 +155,11 @@ export default function DashboardPage() {
                     href={`/contacts/${ping.contactId}`}
                     className="flex items-center gap-3 py-3 transition-colors hover:bg-warm-50 dark:hover:bg-warm-800/50"
                   >
-                    {/* Avatar */}
-                    {ping.contact.photoURL ? (
-                      <img
-                        src={ping.contact.photoURL}
-                        alt={`${ping.contact.firstName} ${ping.contact.lastName}`}
-                        className="h-10 w-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-coral-100 text-sm font-semibold text-coral-600 dark:bg-coral-900/30 dark:text-coral-400">
-                        {ping.contact.firstName[0]}
-                        {ping.contact.lastName[0]}
-                      </div>
-                    )}
+                    <Avatar
+                      src={ping.contact.photoURL}
+                      fallback={`${ping.contact.firstName} ${ping.contact.lastName}`}
+                      size="md"
+                    />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-warm-900 dark:text-warm-50">
                         {ping.contact.firstName} {ping.contact.lastName}
@@ -215,25 +200,18 @@ export default function DashboardPage() {
                     href={`/contacts/${person.id}`}
                     className="flex items-center gap-3 py-3 transition-colors hover:bg-warm-50 dark:hover:bg-warm-800/50"
                   >
-                    {person.photoURL ? (
-                      <img
-                        src={person.photoURL}
-                        alt={`${person.firstName} ${person.lastName}`}
-                        className="h-9 w-9 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-pink-100 text-xs font-semibold text-pink-600 dark:bg-pink-900/30 dark:text-pink-400">
-                        {person.firstName[0]}
-                        {person.lastName[0]}
-                      </div>
-                    )}
+                    <Avatar
+                      src={person.photoURL}
+                      fallback={`${person.firstName} ${person.lastName}`}
+                      size="sm"
+                    />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-warm-900 dark:text-warm-50">
                         {person.firstName} {person.lastName}
                       </p>
                     </div>
                     <span className="shrink-0 text-xs font-medium text-warm-500 dark:text-warm-400">
-                      {formatBirthdayDate(person.date)}
+                      {formatBirthday(person.date)}
                     </span>
                   </Link>
                 </li>

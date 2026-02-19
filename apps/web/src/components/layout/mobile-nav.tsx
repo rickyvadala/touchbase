@@ -2,14 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Settings } from 'lucide-react';
 import { cn } from '@/lib/cn';
-
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/contacts', label: 'Contacts', icon: Users },
-  { href: '/settings', label: 'Settings', icon: Settings },
-];
+import { navLinks } from './nav-links';
 
 export function MobileNav() {
   const pathname = usePathname();
@@ -24,7 +18,7 @@ export function MobileNav() {
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
       <div className="flex w-full">
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {navLinks.map(({ href, label, icon: Icon }) => {
           const isActive =
             pathname === href || pathname.startsWith(`${href}/`);
 

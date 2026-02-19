@@ -5,38 +5,12 @@ import { cn } from '@/lib/cn';
 import type { InteractionType, Contact } from '@touchbase/shared';
 import { useCreateInteraction } from '@/hooks/use-interactions';
 import { getContactName } from '@touchbase/utils';
-import {
-  Phone,
-  MessageSquare,
-  Mail,
-  Coffee,
-  UtensilsCrossed,
-  Calendar,
-  Gift,
-  UserPlus,
-  Heart,
-  MoreHorizontal,
-  Loader2,
-  X,
-  Search,
-} from 'lucide-react';
-
-const INTERACTION_TYPE_OPTIONS: {
-  type: InteractionType;
-  label: string;
-  icon: React.ElementType;
-}[] = [
-  { type: 'call', label: 'Call', icon: Phone },
-  { type: 'text', label: 'Text', icon: MessageSquare },
-  { type: 'email', label: 'Email', icon: Mail },
-  { type: 'coffee', label: 'Coffee', icon: Coffee },
-  { type: 'meal', label: 'Meal', icon: UtensilsCrossed },
-  { type: 'event', label: 'Event', icon: Calendar },
-  { type: 'gift', label: 'Gift', icon: Gift },
-  { type: 'introduction', label: 'Intro', icon: UserPlus },
-  { type: 'favor', label: 'Favor', icon: Heart },
-  { type: 'other', label: 'Other', icon: MoreHorizontal },
-];
+import { INTERACTION_TYPES } from '@/lib/constants';
+import { Avatar } from '@/components/ui/avatar';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { X, Search } from 'lucide-react';
 
 interface LogInteractionFormProps {
   /** Pre-selected contact (when used on a contact detail page) */
@@ -178,18 +152,12 @@ export function LogInteractionForm({
                             }}
                             className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-warm-700 transition-colors hover:bg-warm-50 dark:text-warm-300 dark:hover:bg-warm-700"
                           >
-                            {c.photoURL ? (
-                              <img
-                                src={c.photoURL}
-                                alt=""
-                                className="h-6 w-6 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-coral-100 text-[10px] font-semibold text-coral-600 dark:bg-coral-900/30 dark:text-coral-400">
-                                {c.firstName[0]}
-                                {c.lastName[0]}
-                              </div>
-                            )}
+                            <Avatar
+                              src={c.photoURL}
+                              fallback={getContactName(c)}
+                              size="sm"
+                              className="h-6 w-6 text-[10px]"
+                            />
                             <span>{getContactName(c)}</span>
                           </button>
                         ))
@@ -209,14 +177,14 @@ export function LogInteractionForm({
           Type *
         </label>
         <div className="grid grid-cols-5 gap-2">
-          {INTERACTION_TYPE_OPTIONS.map(({ type, label, icon: Icon }) => (
+          {INTERACTION_TYPES.map(({ value, label, icon: Icon }) => (
             <button
-              key={type}
+              key={value}
               type="button"
-              onClick={() => setSelectedType(type)}
+              onClick={() => setSelectedType(value)}
               className={cn(
                 'flex flex-col items-center gap-1 rounded-lg border p-2 text-[11px] font-medium transition-all',
-                selectedType === type
+                selectedType === value
                   ? 'border-coral-400 bg-coral-50 text-coral-700 ring-1 ring-coral-400/30 dark:border-coral-500 dark:bg-coral-900/20 dark:text-coral-400'
                   : 'border-warm-200 bg-white text-warm-500 hover:border-warm-300 hover:text-warm-700 dark:border-warm-700 dark:bg-warm-800 dark:text-warm-400 dark:hover:border-warm-600 dark:hover:text-warm-300'
               )}
@@ -229,51 +197,33 @@ export function LogInteractionForm({
       </div>
 
       {/* Date */}
-      <div>
-        <label
-          htmlFor="interaction-date"
-          className="mb-1.5 block text-sm font-medium text-warm-700 dark:text-warm-300"
-        >
-          Date
-        </label>
-        <input
-          id="interaction-date"
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="w-full rounded-lg border border-warm-200 bg-white px-3 py-2 text-sm text-warm-900 focus:border-coral-400 focus:outline-none focus:ring-2 focus:ring-coral-400/20 dark:border-warm-700 dark:bg-warm-800 dark:text-warm-50 dark:focus:border-coral-500"
-        />
-      </div>
+      <Input
+        id="interaction-date"
+        type="date"
+        label="Date"
+        value={date}
+        onChange={(e) => setDate(e.target.value)}
+      />
 
       {/* Notes */}
-      <div>
-        <label
-          htmlFor="interaction-notes"
-          className="mb-1.5 block text-sm font-medium text-warm-700 dark:text-warm-300"
-        >
-          Notes (optional)
-        </label>
-        <textarea
-          id="interaction-notes"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={3}
-          className="w-full resize-none rounded-lg border border-warm-200 bg-white px-3 py-2 text-sm text-warm-900 placeholder:text-warm-400 focus:border-coral-400 focus:outline-none focus:ring-2 focus:ring-coral-400/20 dark:border-warm-700 dark:bg-warm-800 dark:text-warm-50 dark:placeholder:text-warm-500 dark:focus:border-coral-500"
-          placeholder="What did you talk about?"
-        />
-      </div>
+      <Textarea
+        id="interaction-notes"
+        label="Notes (optional)"
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        rows={3}
+        placeholder="What did you talk about?"
+      />
 
       {/* Submit */}
-      <button
+      <Button
         type="submit"
-        disabled={!contactId || createInteraction.isPending}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-coral-500 py-2.5 text-sm font-medium text-white transition-colors hover:bg-coral-600 active:bg-coral-700 disabled:cursor-not-allowed disabled:opacity-50"
+        disabled={!contactId}
+        loading={createInteraction.isPending}
+        fullWidth
       >
-        {createInteraction.isPending && (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        )}
         Log Interaction
-      </button>
+      </Button>
 
       {createInteraction.isError && (
         <p className="text-center text-xs text-red-500">

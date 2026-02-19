@@ -1,48 +1,51 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useContacts } from '@/hooks/use-contacts';
 import { ContactCard } from '@/components/contacts/contact-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
 import { Plus, Search, Users } from 'lucide-react';
-import type { Contact, ListContactsParams } from '@touchbase/shared';
+import type { ListContactsParams } from '@touchbase/shared';
+
+const SORT_OPTIONS = [
+  { value: 'name', label: 'Name' },
+  { value: 'healthScore', label: 'Health' },
+  { value: 'lastInteractionAt', label: 'Last Contact' },
+  { value: 'nextPingAt', label: 'Next Ping' },
+];
 
 export default function ContactsPage() {
-  const router = useRouter();
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<ListContactsParams['sortBy']>('name');
 
   const { data, isLoading, error } = useContacts({
     search: search || undefined,
     sortBy,
-    sortOrder: sortBy === 'healthScore' ? 'asc' : 'asc',
+    sortOrder: 'asc',
   });
 
   const contacts = data?.data ?? [];
 
-  const handleContactClick = (contact: Contact) => {
-    router.push(`/contacts/${contact.id}`);
-  };
-
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-warm-900 dark:text-warm-50">
-          Contacts
-        </h1>
-        <Link href="/contacts/new">
-          <Button size="sm">
-            <Plus className="h-4 w-4" />
-            Add Contact
-          </Button>
-        </Link>
-      </div>
+      <PageHeader
+        title="Contacts"
+        action={
+          <Link href="/contacts/new">
+            <Button size="sm">
+              <Plus className="h-4 w-4" />
+              Add Contact
+            </Button>
+          </Link>
+        }
+      />
 
       {/* Search & Filters */}
       <div className="flex items-center gap-3">
@@ -55,16 +58,12 @@ export default function ContactsPage() {
             className="pl-9"
           />
         </div>
-        <select
+        <Select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as ListContactsParams['sortBy'])}
-          className="min-h-[44px] rounded-lg border border-warm-300 bg-white px-3 py-2 text-sm text-warm-700 transition-colors focus:border-coral-500 focus:outline-none focus:ring-2 focus:ring-coral-500/20 dark:border-warm-600 dark:bg-warm-800 dark:text-warm-200 dark:focus:border-coral-400"
-        >
-          <option value="name">Name</option>
-          <option value="healthScore">Health</option>
-          <option value="lastInteractionAt">Last Contact</option>
-          <option value="nextPingAt">Next Ping</option>
-        </select>
+          options={SORT_OPTIONS}
+          className="w-auto flex-shrink-0"
+        />
       </div>
 
       {/* Contact List */}
@@ -103,11 +102,9 @@ export default function ContactsPage() {
       ) : (
         <div className="space-y-2">
           {contacts.map((contact) => (
-            <ContactCard
-              key={contact.id}
-              contact={contact}
-              onClick={handleContactClick}
-            />
+            <Link key={contact.id} href={`/contacts/${contact.id}`}>
+              <ContactCard contact={contact} />
+            </Link>
           ))}
         </div>
       )}

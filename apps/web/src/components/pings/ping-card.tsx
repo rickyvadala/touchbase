@@ -4,11 +4,8 @@ import { useState } from 'react';
 import { cn } from '@/lib/cn';
 import type { Ping, Contact } from '@touchbase/shared';
 import { useActOnPing } from '@/hooks/use-pings';
-import {
-  getContactName,
-  getContactInitials,
-  formatRelativeTime,
-} from '@touchbase/utils';
+import { getContactName, formatRelativeTime } from '@touchbase/utils';
+import { Avatar } from '@/components/ui/avatar';
 import { Check, X, Clock, Loader2 } from 'lucide-react';
 
 interface PingCardProps {
@@ -23,7 +20,6 @@ export function PingCard({ ping, className }: PingCardProps) {
 
   const contact = ping.contact;
   const name = getContactName(contact);
-  const initials = getContactInitials(contact);
 
   const handleComplete = () => {
     actOnPing.mutate({ id: ping.id, data: { action: 'complete' } });
@@ -57,17 +53,11 @@ export function PingCard({ ping, className }: PingCardProps) {
     >
       <div className="flex items-center gap-3">
         {/* Avatar */}
-        {contact.photoURL ? (
-          <img
-            src={contact.photoURL}
-            alt={name}
-            className="h-10 w-10 shrink-0 rounded-full object-cover"
-          />
-        ) : (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-coral-100 text-sm font-semibold text-coral-600 dark:bg-coral-900/30 dark:text-coral-400">
-            {initials}
-          </div>
-        )}
+        <Avatar
+          src={contact.photoURL}
+          fallback={name}
+          size="md"
+        />
 
         {/* Info */}
         <div className="min-w-0 flex-1">

@@ -1,74 +1,59 @@
 'use client';
 
 import { useState } from 'react';
-import { cn } from '@/lib/cn';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { CirclePicker } from '@/components/ui/circle-picker';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import {
+  CHANNEL_TYPES,
+  SPECIAL_DATE_TYPES,
+  CHANNEL_ICON_MAP,
+  birthdayToStorage,
+  birthdayToInput,
+} from '@/lib/constants';
+import { CreateContactSchema } from '@touchbase/shared';
+import { Plus, Trash2, AlertCircle, Calendar } from 'lucide-react';
 import type {
   Contact,
   ContactChannel,
   ContactChannelType,
   SpecialDate,
-  SpecialDateType,
   CreateContactReq,
 } from '@touchbase/shared';
-import { CreateContactSchema } from '@touchbase/shared';
-import {
-  Plus,
-  Trash2,
-  Loader2,
-  AlertCircle,
-  Phone,
-  Mail,
-  Linkedin,
-  Twitter,
-  Instagram,
-  Link,
-  Calendar,
-  Gift,
-  Heart,
-  Briefcase,
-} from 'lucide-react';
-
-const CHANNEL_TYPES: { value: ContactChannelType; label: string; icon: React.ElementType }[] = [
-  { value: 'phone', label: 'Phone', icon: Phone },
-  { value: 'email', label: 'Email', icon: Mail },
-  { value: 'linkedin', label: 'LinkedIn', icon: Linkedin },
-  { value: 'twitter', label: 'Twitter', icon: Twitter },
-  { value: 'instagram', label: 'Instagram', icon: Instagram },
-  { value: 'other', label: 'Other', icon: Link },
-];
-
-const SPECIAL_DATE_TYPES: { value: SpecialDateType; label: string; icon: React.ElementType }[] = [
-  { value: 'birthday', label: 'Birthday', icon: Gift },
-  { value: 'anniversary', label: 'Anniversary', icon: Heart },
-  { value: 'work_anniversary', label: 'Work Anniversary', icon: Briefcase },
-  { value: 'custom', label: 'Custom', icon: Calendar },
-];
-
-const CIRCLE_OPTIONS = [
-  { value: 'inner', label: 'Inner Circle' },
-  { value: 'key', label: 'Key Contacts' },
-  { value: 'extended', label: 'Extended Network' },
-  { value: 'dormant', label: 'Dormant' },
-];
 
 interface ContactFormProps {
   contact?: Contact;
-  onSubmit: (data: CreateContactReq) => void | Promise<void>;
+  onSubmit: (data: CreateContactReq) => Promise<void>;
   isSubmitting?: boolean;
-  className?: string;
+  submitLabel?: string;
+  cancelHref?: string;
 }
 
 interface FormErrors {
   [key: string]: string;
 }
 
+const CHANNEL_OPTIONS = CHANNEL_TYPES.map((c) => ({ value: c.value, label: c.label }));
+const SPECIAL_DATE_OPTIONS = SPECIAL_DATE_TYPES.map((d) => ({ value: d.value, label: d.label }));
+
+function channelPlaceholder(type: ContactChannelType): string {
+  if (type === 'phone') return '+1 (555) 123-4567';
+  if (type === 'email') return 'jane@example.com';
+  return 'Username or URL';
+}
+
 export function ContactForm({
   contact,
   onSubmit,
   isSubmitting = false,
-  className,
+  submitLabel,
+  cancelHref,
 }: ContactFormProps) {
   const isEdit = !!contact;
+  const resolvedSubmitLabel = submitLabel ?? (isEdit ? 'Save Changes' : 'Create Contact');
 
   // Form state
   const [firstName, setFirstName] = useState(contact?.firstName ?? '');
@@ -79,67 +64,45 @@ export function ContactForm({
   const [tagsInput, setTagsInput] = useState(contact?.tags.join(', ') ?? '');
   const [notes, setNotes] = useState(contact?.notes ?? '');
   const [howWeMet, setHowWeMet] = useState(contact?.howWeMet ?? '');
-  const [channels, setChannels] = useState<ContactChannel[]>(
-    contact?.channels ?? []
-  );
-  const [specialDates, setSpecialDates] = useState<SpecialDate[]>(
-    contact?.specialDates ?? []
-  );
-  const [customFrequencyDays, setCustomFrequencyDays] = useState<string>(
+  const [channels, setChannels] = useState<ContactChannel[]>(contact?.channels ?? []);
+  const [specialDates, setSpecialDates] = useState<SpecialDate[]>(() => {
+    if (!contact?.specialDates.length) return [];
+    // Convert stored MM-DD birthday dates to YYYY-MM-DD for the date input
+    return contact.specialDates.map((sd) =>
+      sd.type === 'birthday' ? { ...sd, date: birthdayToInput(sd.date) } : sd
+    );
+  });
+  const [customFrequencyDays, setCustomFrequencyDays] = useState(
     contact?.customFrequencyDays?.toString() ?? ''
   );
   const [errors, setErrors] = useState<FormErrors>({});
 
   // Channel management
-  const addChannel = () => {
-    setChannels((prev) => [...prev, { type: 'phone', value: '' }]);
-  };
+  const addChannel = () => setChannels((prev) => [...prev, { type: 'phone', value: '' }]);
+  const updateChannel = (i: number, field: keyof ContactChannel, value: string) =>
+    setChannels((prev) => prev.map((ch, idx) => (idx === i ? { ...ch, [field]: value } : ch)));
+  const removeChannel = (i: number) => setChannels((prev) => prev.filter((_, idx) => idx !== i));
 
-  const updateChannel = (
-    index: number,
-    field: keyof ContactChannel,
-    value: string
-  ) => {
-    setChannels((prev) =>
-      prev.map((ch, i) =>
-        i === index ? { ...ch, [field]: value } : ch
-      )
-    );
-  };
-
-  const removeChannel = (index: number) => {
-    setChannels((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  // Special dates management
-  const addSpecialDate = () => {
-    setSpecialDates((prev) => [...prev, { type: 'birthday', date: '' }]);
-  };
-
-  const updateSpecialDate = (
-    index: number,
-    field: keyof SpecialDate,
-    value: string
-  ) => {
-    setSpecialDates((prev) =>
-      prev.map((sd, i) =>
-        i === index ? { ...sd, [field]: value } : sd
-      )
-    );
-  };
-
-  const removeSpecialDate = (index: number) => {
-    setSpecialDates((prev) => prev.filter((_, i) => i !== index));
-  };
+  // Special date management
+  const addSpecialDate = () => setSpecialDates((prev) => [...prev, { type: 'birthday', date: '' }]);
+  const updateSpecialDate = (i: number, field: keyof SpecialDate, value: string) =>
+    setSpecialDates((prev) => prev.map((sd, idx) => (idx === i ? { ...sd, [field]: value } : sd)));
+  const removeSpecialDate = (i: number) => setSpecialDates((prev) => prev.filter((_, idx) => idx !== i));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
 
-    const tags = tagsInput
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean);
+    const tags = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
+
+    // Convert special dates for storage (birthday YYYY-MM-DD -> MM-DD)
+    const storageDates = specialDates
+      .filter((sd) => sd.date.trim())
+      .map((sd) =>
+        sd.type === 'birthday'
+          ? { ...sd, date: birthdayToStorage(sd.date) }
+          : sd
+      );
 
     const formData: CreateContactReq = {
       firstName: firstName.trim(),
@@ -151,21 +114,16 @@ export function ContactForm({
       notes: notes.trim(),
       howWeMet: howWeMet.trim() || undefined,
       channels: channels.filter((ch) => ch.value.trim()),
-      specialDates: specialDates.filter((sd) => sd.date.trim()),
-      customFrequencyDays: customFrequencyDays
-        ? parseInt(customFrequencyDays, 10)
-        : undefined,
+      specialDates: storageDates,
+      customFrequencyDays: customFrequencyDays ? parseInt(customFrequencyDays, 10) : undefined,
     };
 
     const result = CreateContactSchema.safeParse(formData);
-
     if (!result.success) {
       const fieldErrors: FormErrors = {};
       for (const issue of result.error.issues) {
         const path = issue.path.join('.');
-        if (!fieldErrors[path]) {
-          fieldErrors[path] = issue.message;
-        }
+        if (!fieldErrors[path]) fieldErrors[path] = issue.message;
       }
       setErrors(fieldErrors);
       return;
@@ -175,386 +133,123 @@ export function ContactForm({
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className={cn('space-y-6', className)}
-    >
-      {/* Name */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label
-            htmlFor="firstName"
-            className="mb-1.5 block text-sm font-medium text-warm-700 dark:text-warm-300"
-          >
-            First Name *
-          </label>
-          <input
-            id="firstName"
-            type="text"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            className={cn(
-              'w-full rounded-lg border bg-white px-3 py-2 text-sm text-warm-900 placeholder:text-warm-400 focus:outline-none focus:ring-2 focus:ring-coral-400/20 dark:bg-warm-800 dark:text-warm-50 dark:placeholder:text-warm-500',
-              errors.firstName
-                ? 'border-red-400 focus:border-red-400'
-                : 'border-warm-200 focus:border-coral-400 dark:border-warm-700 dark:focus:border-coral-500'
-            )}
-            placeholder="John"
-          />
-          {errors.firstName && (
-            <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
-              <AlertCircle className="h-3 w-3" />
-              {errors.firstName}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label
-            htmlFor="lastName"
-            className="mb-1.5 block text-sm font-medium text-warm-700 dark:text-warm-300"
-          >
-            Last Name
-          </label>
-          <input
-            id="lastName"
-            type="text"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            className="w-full rounded-lg border border-warm-200 bg-white px-3 py-2 text-sm text-warm-900 placeholder:text-warm-400 focus:border-coral-400 focus:outline-none focus:ring-2 focus:ring-coral-400/20 dark:border-warm-700 dark:bg-warm-800 dark:text-warm-50 dark:placeholder:text-warm-500 dark:focus:border-coral-500"
-            placeholder="Doe"
-          />
-        </div>
-      </div>
-
-      {/* Company & Role */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label
-            htmlFor="company"
-            className="mb-1.5 block text-sm font-medium text-warm-700 dark:text-warm-300"
-          >
-            Company
-          </label>
-          <input
-            id="company"
-            type="text"
-            value={company}
-            onChange={(e) => setCompany(e.target.value)}
-            className="w-full rounded-lg border border-warm-200 bg-white px-3 py-2 text-sm text-warm-900 placeholder:text-warm-400 focus:border-coral-400 focus:outline-none focus:ring-2 focus:ring-coral-400/20 dark:border-warm-700 dark:bg-warm-800 dark:text-warm-50 dark:placeholder:text-warm-500 dark:focus:border-coral-500"
-            placeholder="Acme Corp"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="role"
-            className="mb-1.5 block text-sm font-medium text-warm-700 dark:text-warm-300"
-          >
-            Role
-          </label>
-          <input
-            id="role"
-            type="text"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            className="w-full rounded-lg border border-warm-200 bg-white px-3 py-2 text-sm text-warm-900 placeholder:text-warm-400 focus:border-coral-400 focus:outline-none focus:ring-2 focus:ring-coral-400/20 dark:border-warm-700 dark:bg-warm-800 dark:text-warm-50 dark:placeholder:text-warm-500 dark:focus:border-coral-500"
-            placeholder="Product Manager"
-          />
-        </div>
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Basic Information */}
+      <Card>
+        <CardHeader><CardTitle>Basic Information</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input label="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Jane" required error={errors.firstName} />
+            <Input label="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Doe" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input label="Company" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Acme Inc." />
+            <Input label="Role" value={role} onChange={(e) => setRole(e.target.value)} placeholder="Product Manager" />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Circle */}
-      <div>
-        <label
-          htmlFor="circleId"
-          className="mb-1.5 block text-sm font-medium text-warm-700 dark:text-warm-300"
-        >
-          Circle *
-        </label>
-        <select
-          id="circleId"
-          value={circleId}
-          onChange={(e) => setCircleId(e.target.value)}
-          className={cn(
-            'w-full rounded-lg border bg-white px-3 py-2 text-sm text-warm-900 focus:outline-none focus:ring-2 focus:ring-coral-400/20 dark:bg-warm-800 dark:text-warm-50',
-            errors.circleId
-              ? 'border-red-400 focus:border-red-400'
-              : 'border-warm-200 focus:border-coral-400 dark:border-warm-700 dark:focus:border-coral-500'
+      <Card>
+        <CardHeader><CardTitle>Circle</CardTitle></CardHeader>
+        <CardContent>
+          <CirclePicker value={circleId} onChange={setCircleId} />
+          {errors.circleId && (
+            <p className="mt-2 flex items-center gap-1 text-sm text-red-600 dark:text-red-400"><AlertCircle className="h-3 w-3" />{errors.circleId}</p>
           )}
-        >
-          {CIRCLE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        {errors.circleId && (
-          <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
-            <AlertCircle className="h-3 w-3" />
-            {errors.circleId}
-          </p>
-        )}
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Tags */}
-      <div>
-        <label
-          htmlFor="tags"
-          className="mb-1.5 block text-sm font-medium text-warm-700 dark:text-warm-300"
-        >
-          Tags
-        </label>
-        <input
-          id="tags"
-          type="text"
-          value={tagsInput}
-          onChange={(e) => setTagsInput(e.target.value)}
-          className="w-full rounded-lg border border-warm-200 bg-white px-3 py-2 text-sm text-warm-900 placeholder:text-warm-400 focus:border-coral-400 focus:outline-none focus:ring-2 focus:ring-coral-400/20 dark:border-warm-700 dark:bg-warm-800 dark:text-warm-50 dark:placeholder:text-warm-500 dark:focus:border-coral-500"
-          placeholder="friend, college, tennis (comma-separated)"
-        />
-      </div>
-
-      {/* How We Met */}
-      <div>
-        <label
-          htmlFor="howWeMet"
-          className="mb-1.5 block text-sm font-medium text-warm-700 dark:text-warm-300"
-        >
-          How We Met
-        </label>
-        <input
-          id="howWeMet"
-          type="text"
-          value={howWeMet}
-          onChange={(e) => setHowWeMet(e.target.value)}
-          className="w-full rounded-lg border border-warm-200 bg-white px-3 py-2 text-sm text-warm-900 placeholder:text-warm-400 focus:border-coral-400 focus:outline-none focus:ring-2 focus:ring-coral-400/20 dark:border-warm-700 dark:bg-warm-800 dark:text-warm-50 dark:placeholder:text-warm-500 dark:focus:border-coral-500"
-          placeholder="Met at a conference in 2023"
-        />
-      </div>
-
-      {/* Notes */}
-      <div>
-        <label
-          htmlFor="notes"
-          className="mb-1.5 block text-sm font-medium text-warm-700 dark:text-warm-300"
-        >
-          Notes
-        </label>
-        <textarea
-          id="notes"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={3}
-          className="w-full resize-none rounded-lg border border-warm-200 bg-white px-3 py-2 text-sm text-warm-900 placeholder:text-warm-400 focus:border-coral-400 focus:outline-none focus:ring-2 focus:ring-coral-400/20 dark:border-warm-700 dark:bg-warm-800 dark:text-warm-50 dark:placeholder:text-warm-500 dark:focus:border-coral-500"
-          placeholder="Any notes about this contact..."
-        />
-      </div>
-
-      {/* Channels */}
-      <div>
-        <div className="mb-2 flex items-center justify-between">
-          <label className="text-sm font-medium text-warm-700 dark:text-warm-300">
-            Contact Channels
-          </label>
-          <button
-            type="button"
-            onClick={addChannel}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-coral-600 transition-colors hover:bg-coral-50 dark:text-coral-400 dark:hover:bg-coral-900/20"
-          >
-            <Plus className="h-3 w-3" />
-            Add Channel
-          </button>
-        </div>
-
-        {channels.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-warm-300 px-3 py-4 text-center text-xs text-warm-400 dark:border-warm-600 dark:text-warm-500">
-            No channels added yet.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {channels.map((channel, index) => {
-              const ChannelIcon =
-                CHANNEL_TYPES.find((t) => t.value === channel.type)?.icon ??
-                Link;
+      {/* Contact Channels */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Contact Channels</CardTitle>
+            <button type="button" onClick={addChannel} className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-coral-600 transition-colors hover:bg-coral-50 dark:text-coral-400 dark:hover:bg-coral-900/20">
+              <Plus className="h-3 w-3" />Add Channel
+            </button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {channels.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-warm-300 px-3 py-4 text-center text-xs text-warm-400 dark:border-warm-600 dark:text-warm-500">No channels added yet.</p>
+          ) : (
+            channels.map((channel, i) => {
+              const Icon = CHANNEL_ICON_MAP[channel.type];
               return (
-                <div
-                  key={index}
-                  className="flex items-center gap-2"
-                >
-                  <div className="flex shrink-0 items-center justify-center text-warm-400">
-                    <ChannelIcon className="h-4 w-4" />
-                  </div>
-                  <select
-                    value={channel.type}
-                    onChange={(e) =>
-                      updateChannel(
-                        index,
-                        'type',
-                        e.target.value as ContactChannelType
-                      )
-                    }
-                    className="w-28 shrink-0 rounded-lg border border-warm-200 bg-white px-2 py-1.5 text-xs text-warm-900 focus:border-coral-400 focus:outline-none focus:ring-2 focus:ring-coral-400/20 dark:border-warm-700 dark:bg-warm-800 dark:text-warm-50 dark:focus:border-coral-500"
-                  >
-                    {CHANNEL_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    value={channel.value}
-                    onChange={(e) =>
-                      updateChannel(index, 'value', e.target.value)
-                    }
-                    placeholder="Value"
-                    className="min-w-0 flex-1 rounded-lg border border-warm-200 bg-white px-2 py-1.5 text-xs text-warm-900 placeholder:text-warm-400 focus:border-coral-400 focus:outline-none focus:ring-2 focus:ring-coral-400/20 dark:border-warm-700 dark:bg-warm-800 dark:text-warm-50 dark:placeholder:text-warm-500 dark:focus:border-coral-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeChannel(index)}
-                    className="shrink-0 rounded-lg p-1.5 text-warm-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                    aria-label="Remove channel"
-                  >
+                <div key={i} className="flex items-center gap-2">
+                  <div className="flex shrink-0 items-center justify-center text-warm-400"><Icon className="h-4 w-4" /></div>
+                  <Select value={channel.type} onChange={(e) => updateChannel(i, 'type', e.target.value)} options={CHANNEL_OPTIONS} className="w-28 shrink-0" />
+                  <Input value={channel.value} onChange={(e) => updateChannel(i, 'value', e.target.value)} placeholder={channelPlaceholder(channel.type as ContactChannelType)} className="min-w-0 flex-1" />
+                  <button type="button" onClick={() => removeChannel(i)} className="shrink-0 rounded-lg p-1.5 text-warm-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400" aria-label="Remove channel">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
               );
-            })}
-          </div>
-        )}
-        {errors.channels && (
-          <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
-            <AlertCircle className="h-3 w-3" />
-            {errors.channels}
-          </p>
-        )}
-      </div>
+            })
+          )}
+          {errors.channels && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-red-500"><AlertCircle className="h-3 w-3" />{errors.channels}</p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Special Dates */}
-      <div>
-        <div className="mb-2 flex items-center justify-between">
-          <label className="text-sm font-medium text-warm-700 dark:text-warm-300">
-            Special Dates
-          </label>
-          <button
-            type="button"
-            onClick={addSpecialDate}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-coral-600 transition-colors hover:bg-coral-50 dark:text-coral-400 dark:hover:bg-coral-900/20"
-          >
-            <Plus className="h-3 w-3" />
-            Add Date
-          </button>
-        </div>
-
-        {specialDates.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-warm-300 px-3 py-4 text-center text-xs text-warm-400 dark:border-warm-600 dark:text-warm-500">
-            No special dates added yet.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {specialDates.map((sd, index) => {
-              const DateIcon =
-                SPECIAL_DATE_TYPES.find((t) => t.value === sd.type)?.icon ??
-                Calendar;
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Special Dates</CardTitle>
+            <button type="button" onClick={addSpecialDate} className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-coral-600 transition-colors hover:bg-coral-50 dark:text-coral-400 dark:hover:bg-coral-900/20">
+              <Plus className="h-3 w-3" />Add Date
+            </button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {specialDates.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-warm-300 px-3 py-4 text-center text-xs text-warm-400 dark:border-warm-600 dark:text-warm-500">No special dates added yet.</p>
+          ) : (
+            specialDates.map((sd, i) => {
+              const DateIcon = SPECIAL_DATE_TYPES.find((t) => t.value === sd.type)?.icon ?? Calendar;
               return (
-                <div
-                  key={index}
-                  className="flex items-center gap-2"
-                >
-                  <div className="flex shrink-0 items-center justify-center text-warm-400">
-                    <DateIcon className="h-4 w-4" />
-                  </div>
-                  <select
-                    value={sd.type}
-                    onChange={(e) =>
-                      updateSpecialDate(
-                        index,
-                        'type',
-                        e.target.value as SpecialDateType
-                      )
-                    }
-                    className="w-36 shrink-0 rounded-lg border border-warm-200 bg-white px-2 py-1.5 text-xs text-warm-900 focus:border-coral-400 focus:outline-none focus:ring-2 focus:ring-coral-400/20 dark:border-warm-700 dark:bg-warm-800 dark:text-warm-50 dark:focus:border-coral-500"
-                  >
-                    {SPECIAL_DATE_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="date"
-                    value={sd.date}
-                    onChange={(e) =>
-                      updateSpecialDate(index, 'date', e.target.value)
-                    }
-                    className="min-w-0 flex-1 rounded-lg border border-warm-200 bg-white px-2 py-1.5 text-xs text-warm-900 focus:border-coral-400 focus:outline-none focus:ring-2 focus:ring-coral-400/20 dark:border-warm-700 dark:bg-warm-800 dark:text-warm-50 dark:focus:border-coral-500"
-                  />
+                <div key={i} className="flex items-center gap-2">
+                  <div className="flex shrink-0 items-center justify-center text-warm-400"><DateIcon className="h-4 w-4" /></div>
+                  <Select value={sd.type} onChange={(e) => updateSpecialDate(i, 'type', e.target.value)} options={SPECIAL_DATE_OPTIONS} className="w-36 shrink-0" />
+                  <Input type="date" value={sd.date} onChange={(e) => updateSpecialDate(i, 'date', e.target.value)} className="min-w-0 flex-1" />
                   {sd.type === 'custom' && (
-                    <input
-                      type="text"
-                      value={sd.label ?? ''}
-                      onChange={(e) =>
-                        updateSpecialDate(index, 'label', e.target.value)
-                      }
-                      placeholder="Label"
-                      className="w-24 shrink-0 rounded-lg border border-warm-200 bg-white px-2 py-1.5 text-xs text-warm-900 placeholder:text-warm-400 focus:border-coral-400 focus:outline-none focus:ring-2 focus:ring-coral-400/20 dark:border-warm-700 dark:bg-warm-800 dark:text-warm-50 dark:placeholder:text-warm-500 dark:focus:border-coral-500"
-                    />
+                    <Input value={sd.label ?? ''} onChange={(e) => updateSpecialDate(i, 'label', e.target.value)} placeholder="Label" className="w-24 shrink-0" />
                   )}
-                  <button
-                    type="button"
-                    onClick={() => removeSpecialDate(index)}
-                    className="shrink-0 rounded-lg p-1.5 text-warm-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                    aria-label="Remove special date"
-                  >
+                  <button type="button" onClick={() => removeSpecialDate(i)} className="shrink-0 rounded-lg p-1.5 text-warm-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400" aria-label="Remove special date">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
               );
-            })}
-          </div>
-        )}
-        {errors.specialDates && (
-          <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
-            <AlertCircle className="h-3 w-3" />
-            {errors.specialDates}
-          </p>
-        )}
-      </div>
+            })
+          )}
+          {errors.specialDates && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-red-500"><AlertCircle className="h-3 w-3" />{errors.specialDates}</p>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Custom Frequency */}
-      <div>
-        <label
-          htmlFor="customFrequencyDays"
-          className="mb-1.5 block text-sm font-medium text-warm-700 dark:text-warm-300"
-        >
-          Custom Frequency (days)
-        </label>
-        <input
-          id="customFrequencyDays"
-          type="number"
-          min="1"
-          value={customFrequencyDays}
-          onChange={(e) => setCustomFrequencyDays(e.target.value)}
-          className="w-full rounded-lg border border-warm-200 bg-white px-3 py-2 text-sm text-warm-900 placeholder:text-warm-400 focus:border-coral-400 focus:outline-none focus:ring-2 focus:ring-coral-400/20 dark:border-warm-700 dark:bg-warm-800 dark:text-warm-50 dark:placeholder:text-warm-500 dark:focus:border-coral-500"
-          placeholder="Leave blank to use circle default"
-        />
-        <p className="mt-1 text-xs text-warm-400 dark:text-warm-500">
-          Override the circle&apos;s default reminder frequency.
-        </p>
-      </div>
+      {/* Additional Details */}
+      <Card>
+        <CardHeader><CardTitle>Additional Details</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <Input label="How did you meet?" value={howWeMet} onChange={(e) => setHowWeMet(e.target.value)} placeholder="Conference, mutual friend, work..." />
+          <Input label="Tags" value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} placeholder="friend, colleague, mentor (comma-separated)" hint="Separate tags with commas" />
+          <Textarea label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything you want to remember..." rows={3} />
+          <Input label="Custom frequency (days)" type="number" min={1} value={customFrequencyDays} onChange={(e) => setCustomFrequencyDays(e.target.value)} placeholder="Leave blank to use circle default" hint="Override the circle's default reminder frequency." />
+        </CardContent>
+      </Card>
 
-      {/* Submit */}
-      <div className="flex items-center justify-end gap-3 border-t border-warm-200 pt-4 dark:border-warm-700">
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="inline-flex items-center gap-2 rounded-lg bg-coral-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-coral-600 active:bg-coral-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-          {isEdit ? 'Save Changes' : 'Create Contact'}
-        </button>
+      {/* Actions */}
+      <div className="flex items-center gap-3">
+        <Button type="submit" loading={isSubmitting}>{resolvedSubmitLabel}</Button>
+        {cancelHref && (
+          <a href={cancelHref}>
+            <Button type="button" variant="ghost">Cancel</Button>
+          </a>
+        )}
       </div>
     </form>
   );

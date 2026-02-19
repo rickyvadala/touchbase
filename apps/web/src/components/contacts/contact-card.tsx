@@ -1,10 +1,10 @@
 'use client';
 
 import { cn } from '@/lib/cn';
+import { Avatar } from '@/components/ui/avatar';
 import type { Contact } from '@touchbase/shared';
 import {
   getContactName,
-  getContactInitials,
   formatRelativeTime,
   getHealthColor,
   getHealthBgColor,
@@ -19,7 +19,6 @@ interface ContactCardProps {
 
 export function ContactCard({ contact, onClick, className }: ContactCardProps) {
   const name = getContactName(contact);
-  const initials = getContactInitials(contact);
   const healthColor = getHealthColor(contact.healthScore);
   const healthBgColor = getHealthBgColor(contact.healthScore);
 
@@ -35,17 +34,12 @@ export function ContactCard({ contact, onClick, className }: ContactCardProps) {
     >
       {/* Avatar */}
       <div className="relative shrink-0">
-        {contact.photoURL ? (
-          <img
-            src={contact.photoURL}
-            alt={name}
-            className="h-10 w-10 rounded-full object-cover sm:h-12 sm:w-12"
-          />
-        ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-coral-100 text-sm font-semibold text-coral-600 dark:bg-coral-900/30 dark:text-coral-400 sm:h-12 sm:w-12 sm:text-base">
-            {initials}
-          </div>
-        )}
+        <Avatar
+          src={contact.photoURL}
+          fallback={name}
+          size="md"
+          className="sm:h-12 sm:w-12 sm:text-base"
+        />
         {/* Health dot */}
         <span
           className={cn(
