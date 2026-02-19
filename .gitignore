@@ -35,8 +35,11 @@ yarn-error.log*
 # Vercel
 .vercel
 
-# PWA
-public/sw.js
-public/workbox-*.js
-public/sw.js.map
-public/workbox-*.js.map
+# PWA (generated service worker)
+**/public/sw.js
+**/public/workbox-*.js
+**/public/sw.js.map
+**/public/workbox-*.js.map
+
+# TypeScript build info
+*.tsbuildinfo
